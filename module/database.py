@@ -13,7 +13,7 @@ DBProductsVector = NewType('DBProductsVector', List[Product])
 
 
 class DataBase:
-    def __init__(self, database_file: str='data/orders.sqlite'):
+    def __init__(self, database_file: str='data/orders.sqlite', *args, **kwargs):
         """
         Initialize sqlalchemy with sqlite3 engine
         :param database_file: sqlite3 input/output file name
@@ -30,7 +30,11 @@ class DataBase:
 
 
 class DataStorage(DataBase):
-    def store(self, filename: str, limit: int) -> None:
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+        self._cache = {'users': {}, 'products': {}}
+
+    def store(self, filename: str, limit: int=None) -> None:
         """
         Store input json record into output databaze
         :param filename: input data filename
@@ -38,7 +42,8 @@ class DataStorage(DataBase):
         :return: None
         """
         for record in DataIterator(filename, limit):
-            user = self._create_user(DictUser(record['user']))
+            if record['user']['id'] not in self._cache['users'].keys():
+                self._cache['users'][record['user']['id']] = self._create_user(DictUser(record['user']))
             products = self._create_products(record['products'])
             self._create_order(record, products)
 
@@ -64,12 +69,16 @@ class DataStorage(DataBase):
         """
         db_products = DBProductsVector([])
         for new_product in new_products:
-            db_product = (
-                self._session.query(Product).filter(Product.id == new_product["id"]).one_or_none()
-            )
-            if db_product is None:
-                db_product = Product(**new_product)
-                self._session.add(db_product)
+            if new_product["id"] not in self._cache['products'].keys():
+                db_product = (
+                    self._session.query(Product).filter(Product.id == new_product["id"]).one_or_none()
+                )
+                if db_product is None:
+                    db_product = Product(**new_product)
+                    self._session.add(db_product)
+                    self._cache['products'][new_product["id"]] = db_product
+            else:
+                db_product = self._cache['products'][new_product["id"]]
             db_products.append(db_product)
         return db_products
 
