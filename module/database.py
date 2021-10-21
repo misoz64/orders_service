@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from module.utils import DataIterator
+from module.utils import DataIterator, JsonDataException
 from typing import List, NewType, Dict
 from module.model import Base, User, Product, Order
 
@@ -43,9 +43,12 @@ class DataStorage:
         for record in DataIterator(filename, limit):
             if record is None:
                 continue
-            self._create_user(DictUser(record['user']))
-            products = self._create_products(record['products'])
-            self._create_order(record, products)
+            try:
+                self._create_user(DictUser(record['user']))
+                products = self._create_products(record['products'])
+                self._create_order(record, products)
+            except JsonDataException as jde:
+                print(f'Data error: {jde}')
         self._session.commit()
 
     def _create_user(self, new_user: DictUser) -> DBUser:
@@ -54,12 +57,15 @@ class DataStorage:
         :param new_user: dict user
         :return: DB User object
         """
-        if new_user['id'] not in self._cache['users'].keys():
+        if new_user.get('id') not in self._cache['users'].keys():
             db_user = (
-                self._session.query(User).filter(User.id == new_user["id"]).one_or_none()
+                self._session.query(User).filter(User.id == new_user.get("id")).one_or_none()
             )
             if db_user is None:
-                db_user = User(**new_user)
+                try:
+                    db_user = User(**new_user)
+                except:
+                    raise JsonDataException(f'Invalid User record ({new_user})')
                 self._session.add(db_user)
             self._cache['users'][new_user['id']] = db_user
         db_user = self._cache['users'][new_user['id']]
@@ -73,12 +79,15 @@ class DataStorage:
         """
         db_products = DBProductsVector([])
         for new_product in new_products:
-            if new_product["id"] not in self._cache['products'].keys():
+            if new_product.get("id") not in self._cache['products'].keys():
                 db_product = (
-                    self._session.query(Product).filter(Product.id == new_product["id"]).one_or_none()
+                    self._session.query(Product).filter(Product.id == new_product.get("id")).one_or_none()
                 )
                 if db_product is None:
-                    db_product = Product(**new_product)
+                    try:
+                        db_product = Product(**new_product)
+                    except:
+                        raise JsonDataException(f'Invalid Product record {new_product}')
                     self._session.add(db_product)
                     self._cache['products'][new_product["id"]] = db_product
             else:
@@ -94,13 +103,15 @@ class DataStorage:
         :return:
         """
         db_order = (
-            self._session.query(Order).filter(Order.id == record["id"]).one_or_none()
+            self._session.query(Order).filter(Order.id == record.get("id")).one_or_none()
         )
         if db_order:
             # already exists, skipping
-            self._session.rollback()
-            return
-        db_order = Order(id=record['id'], created=datetime.fromtimestamp(record['created']))
+            raise JsonDataException(f'Product record with ID {record.get("id")} already exists')
+        try:
+            db_order = Order(id=record['id'], created=datetime.fromtimestamp(record['created']))
+        except:
+            raise JsonDataException('Invalid Order record {record}')
         db_order.user_id = record['user']['id']
         for product in products:
             db_order.products.append(product)

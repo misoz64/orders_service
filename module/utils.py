@@ -4,11 +4,15 @@ import gzip
 import re
 
 
+class JsonDataException(Exception):
+    pass
+
+
 class ContextManager:
-    def __enter__(self) -> 'OrdersService':
+    def __enter__(self, *args, **kwargs) -> 'OrdersService':
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args, **kwargs):
         pass
 
 
