@@ -1,18 +1,15 @@
 from sqlalchemy.sql import func, desc
 from module.model import User, Product, Order
-from module.utils import validate_date
+from module.utils import validate_date, ContextManager
 from module.database import get_session, DataStorage
 from typing import List, Any
 SQLResult = List[Any]
 
 
-class OrdersService:
+class OrdersService(ContextManager):
     def __init__(self, database_file: str = 'data/orders.sqlite', *args, **kwargs):
         self._session = get_session(database_file)
         self._data_storage = DataStorage(self._session)
-
-    def __enter__(self) -> 'OrdersService':
-        return self
 
     def store(self, filename: str, limit: int=None):
         self._data_storage.store(filename, limit)

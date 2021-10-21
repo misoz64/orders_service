@@ -19,4 +19,4 @@ def example_main2():
 
 
 if __name__ == '__main__':
-    example_main2()
+    example_main()

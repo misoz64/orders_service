@@ -4,6 +4,14 @@ import gzip
 import re
 
 
+class ContextManager:
+    def __enter__(self) -> 'OrdersService':
+        return self
+
+    def __exit__(self):
+        pass
+
+
 def validate_date(date_time: str) -> None:
     """
     Datetime format validation. Even only substring is valid, expect full YYYY-MM-dd hh:mm:ss string
@@ -38,4 +46,7 @@ class DataIterator:
         line = self._f.readline() if self._limit is None or self._limit >= self._counter else None
         if not line:
             raise StopIteration
-        return json.loads(line)
+        try:
+            return json.loads(line)
+        except:
+            print(f'Invalid json on line {self._counter}')

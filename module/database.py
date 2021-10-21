@@ -37,9 +37,13 @@ class DataStorage:
         :param limit: only ${limit} lines will be processed. Unlimited if None
         :return: None
         """
+        if limit is not None and limit <= 0:
+            raise ValueError(f'Invalid limit value: "{limit}"')
+
         for record in DataIterator(filename, limit):
-            if record['user']['id'] not in self._cache['users'].keys():
-                self._cache['users'][record['user']['id']] = self._create_user(DictUser(record['user']))
+            if record is None:
+                continue
+            self._create_user(DictUser(record['user']))
             products = self._create_products(record['products'])
             self._create_order(record, products)
         self._session.commit()
@@ -50,12 +54,15 @@ class DataStorage:
         :param new_user: dict user
         :return: DB User object
         """
-        db_user = (
-            self._session.query(User).filter(User.id == new_user["id"]).one_or_none()
-        )
-        if db_user is None:
-            db_user = User(**new_user)
-            self._session.add(db_user)
+        if new_user['id'] not in self._cache['users'].keys():
+            db_user = (
+                self._session.query(User).filter(User.id == new_user["id"]).one_or_none()
+            )
+            if db_user is None:
+                db_user = User(**new_user)
+                self._session.add(db_user)
+            self._cache['users'][new_user['id']] = db_user
+        db_user = self._cache['users'][new_user['id']]
         return db_user
 
     def _create_products(self, new_products: DictProductsVector) -> DBProductsVector:
