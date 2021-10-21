@@ -1,7 +1,7 @@
 from typing import Iterator
+from datetime import datetime
 import json
 import gzip
-import re
 
 
 class JsonDataException(Exception):
@@ -16,23 +16,24 @@ class ContextManager:
         pass
 
 
-def validate_date(date_time: str) -> None:
+def get_datetime(date_time: str) -> 'datetime':
     """
     Datetime format validation. Even only substring is valid, expect full YYYY-MM-dd hh:mm:ss string
     :param date_time: validated string
-    :return: None
+    :return: datetime
     """
     # YYYY-MM-dd hh:mm:ss
-    re_c = re.compile(r'^[\d]{4}-[\d]{2}-[\d]{2}[\s]+[\d]{1,2}:[\d]{1,2}:[\d]{1,2}$')
-    if not re_c.match(date_time):
-        raise ValueError(f'Invalid datetime format "{date_time}"')
+    try:
+        return datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S')
+    except:
+        raise ValueError('Invalid date time format (YYYY-MM-dd hh:mm:ss)')
 
 
 class DataIterator:
     """
     Class to read data from file. Json per file is expected
     """
-    def __init__(self, filename: str = 'data/data.ndjson', limit: int = None) -> Iterator['DataIterator']:
+    def __init__(self, filename: str, limit: int = None) -> Iterator['DataIterator']:
         """
         Read input file and iterate over them
         :param filename: input file name. Gzipped file with '.gz' extension is also valid

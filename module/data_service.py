@@ -1,6 +1,6 @@
 from sqlalchemy.sql import func, desc
 from module.model import User, Product, Order
-from module.utils import validate_date, ContextManager
+from module.utils import get_datetime, ContextManager, DataIterator
 from module.database import get_session, DataStorage
 from typing import List, Any
 SQLResult = List[Any]
@@ -9,9 +9,9 @@ SQLResult = List[Any]
 class OrdersService(ContextManager):
     def __init__(self, database_file: str = 'data/orders.sqlite', *args, **kwargs):
         self._session = get_session(database_file)
-        self._data_storage = DataStorage(self._session)
+        self._data_storage = DataStorage(self._session, DataIterator)
 
-    def store(self, filename: str, limit: int=None):
+    def store(self, filename: str = 'data/data.ndjson', limit: int = None):
         self._data_storage.store(filename, limit)
 
     def _fetch_orders(self, data_from: str, data_to: str) -> SQLResult:
@@ -27,18 +27,20 @@ class OrdersService(ContextManager):
                 filter(Order.created <= data_to).order_by(Order.created).all()
         )
 
-    def get_orders(self, data_from: str, data_to: str) -> None:
+    def get_orders(self, str_date_from: str, str_date_to: str) -> None:
         """
         Print result - orders created between given datetimes
         :param data_from: datetime min interval
         :param data_to: datetime max interval
         """
-        validate_date(data_from)
-        validate_date(data_to)
+        date_from = get_datetime(str_date_from)
+        date_to = get_datetime(str_date_to)
 
+        if not date_from < date_to:
+            raise ValueError(f'{str_date_from} should be < as {str_date_to}')
         print(f'Orders by date:')
         print(f'\tOrder ID\tCreated\t\tUser')
-        for no, order in enumerate(self._fetch_orders(data_from, data_to)):
+        for no, order in enumerate(self._fetch_orders(date_from, date_to)):
             print(f'{no + 1}\t{order.id}\t{str(order.created)}\t{order.user_id, order.user_name, order.user_city}')
         print()
 

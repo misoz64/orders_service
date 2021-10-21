@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from module.utils import DataIterator, JsonDataException
+from module.utils import JsonDataException
 from typing import List, NewType, Dict
 from module.model import Base, User, Product, Order
 
@@ -26,8 +26,9 @@ def get_session(database_file: str):
 
 
 class DataStorage:
-    def __init__(self, session, *args, **kwargs) -> None:
+    def __init__(self, session, iterator, *args, **kwargs) -> None:
         self._session = session
+        self._data_iterator = iterator
         self._cache = {'users': {}, 'products': {}}
 
     def store(self, filename: str, limit: int=None) -> None:
@@ -40,7 +41,7 @@ class DataStorage:
         if limit is not None and limit <= 0:
             raise ValueError(f'Invalid limit value: "{limit}"')
 
-        for record in DataIterator(filename, limit):
+        for record in self._data_iterator(filename, limit):
             if record is None:
                 continue
             try:
