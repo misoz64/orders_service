@@ -12,26 +12,22 @@ DictProductsVector = NewType('DictProductsVector', List[DictProduct])
 DBProductsVector = NewType('DBProductsVector', List[Product])
 
 
-class DataBase:
-    def __init__(self, database_file: str='data/orders.sqlite', *args, **kwargs):
-        """
-        Initialize sqlalchemy with sqlite3 engine
-        :param database_file: sqlite3 input/output file name
-        """
-        self.__database = database_file
-
-    def __enter__(self) -> 'DataBase':
-        engine = create_engine(f"sqlite:///{self.__database}")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker()
-        Session.configure(bind=engine)
-        self._session = Session()
-        return self
+def get_session(database_file: str):
+    """
+    Initialize sqlalchemy with sqlite3 engine
+    :param database_file: sqlite3 input/output file name
+    :return: database session
+    """
+    engine = create_engine(f"sqlite:///{database_file}")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker()
+    Session.configure(bind=engine)
+    return Session()
 
 
-class DataStorage(DataBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+class DataStorage:
+    def __init__(self, session, *args, **kwargs) -> None:
+        self._session = session
         self._cache = {'users': {}, 'products': {}}
 
     def store(self, filename: str, limit: int=None) -> None:
@@ -46,6 +42,7 @@ class DataStorage(DataBase):
                 self._cache['users'][record['user']['id']] = self._create_user(DictUser(record['user']))
             products = self._create_products(record['products'])
             self._create_order(record, products)
+        self._session.commit()
 
     def _create_user(self, new_user: DictUser) -> DBUser:
         """
@@ -101,6 +98,3 @@ class DataStorage(DataBase):
         for product in products:
             db_order.products.append(product)
         self._session.add(db_order)
-
-    def __exit__(self, *args) -> None:
-        self._session.commit()

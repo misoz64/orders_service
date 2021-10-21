@@ -10,5 +10,13 @@ def example_main():
         service.top_buyers(limit=4)
 
 
+def example_main2():
+    service = OrdersService('data/orders.sqlite')
+    service.store('data/data.ndjson.gz')
+#        service.store('data/data.ndjson.gz', limit=10)
+    service.get_orders('2018-10-13 10:06:36', '2018-11-13 07:28:58')
+    service.top_buyers(limit=4)
+
+
 if __name__ == '__main__':
-    example_main()
+    example_main2()
